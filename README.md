@@ -1,28 +1,28 @@
-# FymUsers — Users & Roles API (FYM Technology senior dev test)
+# FymUsers — API de Usuarios y Roles (Prueba técnica senior FYM Technology)
 
-A REST API for managing users and roles, with JWT-based authentication and a React client.
-Built per the FYM senior developer test specification.
+API REST para gestión de usuarios y roles, con autenticación basada en JWT y un cliente React.
+Desarrollada según la especificación de la prueba técnica senior de FYM Technology.
 
 ## Stack
 
-- **API** — ASP.NET Core 8 (C#), EF Core 8, Swashbuckle (Swagger), BCrypt.Net for password hashing, JWT Bearer auth.
-- **Database** — SQL Server 2022 (on macOS Apple Silicon, falls back to `azure-sql-edge` because SQL Server 2022 segfaults under QEMU emulation in Rancher Desktop). Connection uses `Encrypt=True`.
-- **Client** — React 19 + TypeScript + Vite 6 + axios + react-router-dom.
+- **API** — ASP.NET Core 8 (C#), EF Core 8, Swashbuckle (Swagger), BCrypt.Net para hashing de contraseñas, autenticación JWT Bearer.
+- **Base de datos** — SQL Server 2022. La conexión usa `Encrypt=True`.
+- **Cliente** — React 19 + TypeScript + Vite 6 + axios + react-router-dom.
 
-## Project layout
+## Estructura del proyecto
 
 ```
 TEST/
   FymUsers.sln
   src/
-    FymUsers.Api/                 ASP.NET Core Web API (controllers, JWT, Swagger, DI)
-    FymUsers.Domain/              Entity classes (User, Role, UserRole)
-    FymUsers.Infrastructure/      EF Core DbContext + migrations
-  client/                         React (Vite + TS) client
+    FymUsers.Api/                 ASP.NET Core Web API (controladores, JWT, Swagger, DI)
+    FymUsers.Domain/              Entidades (User, Role, UserRole)
+    FymUsers.Infrastructure/      EF Core DbContext + migraciones
+  client/                         Cliente React (Vite + TS)
   README.md
 ```
 
-## Entity-relationship model
+## Modelo entidad-relación
 
 ```mermaid
 erDiagram
@@ -44,71 +44,60 @@ erDiagram
     }
     USER_ROLES {
         int       UserId PK,FK
-        int       RoleId PK,FK
         datetime2 AssignedAt
+        int       RoleId PK,FK
     }
 ```
 
-The `USER_ROLES` table is a many-to-many join with a composite primary key `(UserId, RoleId)`.
-Cascade delete is enabled on `User → UserRoles`; deleting a `Role` is restricted to prevent orphaning users.
+`USER_ROLES` es una tabla de unión muchos-a-muchos con clave primaria compuesta `(UserId, RoleId)`.
+El borrado en cascada está habilitado en `User → UserRoles`; borrar un `Role` está restringido para evitar usuarios huérfanos.
 
-Seed data (created on first run):
+Datos iniciales creados en el primer arranque:
 
-| Role         | Id | Notes                                              |
+| Rol          | Id | Notas                                              |
 |--------------|----|----------------------------------------------------|
-| `SuperAdmin` | 1  | Can create users and assign roles                  |
-| `Admin`      | 2  | Manages users and roles                            |
-| `User`       | 3  | Standard authenticated user                        |
+| `SuperAdmin` | 1  | Puede crear usuarios y asignar roles               |
+| `Admin`      | 2  | Administra usuarios y roles                        |
+| `User`       | 3  | Usuario autenticado estándar                       |
 
-A pre-created super administrator is inserted on first startup:
+Super administrador pre-creado al iniciar por primera vez:
 
-- **Username**: `superadmin`
-- **Password**: `SuperAdmin123!`
+- **Usuario**: `superadmin`
+- **Contraseña**: `SuperAdmin123!`
 - **Email**: `superadmin@fym.local`
 
-## Prerequisites
+## Prerrequisitos
 
 - .NET 8 SDK
-- Docker (Docker Desktop, Rancher Desktop, OrbStack, etc.)
-- Node.js 20.19+ or 22+ (for the client)
+- SQL Server 2022 instalado y en ejecución
+- Node.js 20.19+ o 22+ (para el cliente)
 
-## Quick start
+## Inicio rápido
 
-### 1. Start SQL Server
+### 1. Configurar la conexión a SQL Server
 
-On Apple Silicon (Mac M-chip), use `azure-sql-edge` — it is ARM64-native and does not segfault:
+Editar `src/FymUsers.Api/appsettings.json` y ajustar la cadena de conexión según la instancia local de SQL Server:
 
-```bash
-docker run -d --name fym-mssql \
-  -e "ACCEPT_EULA=1" \
-  -e "MSSQL_SA_PASSWORD=YourStrong!Passw0rd" \
-  -p 1433:1433 \
-  mcr.microsoft.com/azure-sql-edge:latest
+```json
+"ConnectionStrings": {
+  "Default": "Server=localhost,1433;Database=FymUsers;User Id=sa;Password=<tu-contraseña>;Encrypt=True;TrustServerCertificate=True;"
+}
 ```
 
-On Linux / Windows / Intel Mac, the official image works too:
+Los parámetros a ajustar son `Server`, `User Id` y `Password`. La base de datos `FymUsers` se crea automáticamente al levantar la API.
 
-```bash
-docker run -d --name fym-mssql \
-  -e "ACCEPT_EULA=Y" \
-  -e "MSSQL_SA_PASSWORD=YourStrong!Passw0rd" \
-  -e "MSSQL_PID=Developer" \
-  -p 1433:1433 \
-  mcr.microsoft.com/mssql/server:2022-latest
-```
+### 2. Levantar la API
 
-### 2. Run the API
-
-The API applies EF Core migrations and seeds the super-admin user automatically on startup.
+La API aplica las migraciones de EF Core y crea el super administrador automáticamente al arrancar.
 
 ```bash
 dotnet run --project src/FymUsers.Api --urls http://localhost:5080
 ```
 
 - Swagger UI: <http://localhost:5080/swagger>
-- Root `/` redirects to Swagger.
+- La raíz `/` redirige a Swagger.
 
-### 3. Run the React client
+### 3. Levantar el cliente React
 
 ```bash
 cd client
@@ -116,35 +105,126 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Pre-filled login form uses the seed credentials.
+Abrir <http://localhost:5173>. El formulario de login viene pre-relleno con las credenciales del seed.
 
-## API surface
+## Despliegue
 
-All endpoints are documented and testable through Swagger (`/swagger`). JWT can be supplied via the **Authorize** button.
+### 1. Base de datos
 
-| Method | Route                          | Auth                | Description                                      |
-|--------|--------------------------------|---------------------|--------------------------------------------------|
-| POST   | `/api/auth/login`              | Anonymous           | Returns JWT + user profile                       |
-| GET    | `/api/users`                   | Any authenticated   | List all users with their roles                  |
-| GET    | `/api/users/me`                | Any authenticated   | Current user's profile                           |
-| GET    | `/api/users/{id}`              | Any authenticated   | Get a user by id                                 |
-| POST   | `/api/users`                   | `SuperAdmin` only   | Create a new user (optionally with role ids)     |
-| POST   | `/api/users/{id}/roles`        | `SuperAdmin` only   | Assign one or more roles to a user               |
-| GET    | `/api/roles`                   | Any authenticated   | List all roles                                   |
+Asegurarse de que SQL Server está corriendo y que la cadena de conexión apunta a la instancia correcta (ver sección anterior).
 
-### Sample requests
+La API aplica las migraciones de EF Core automáticamente al iniciar — no se requiere ningún paso manual de esquema. Si se prefiere aplicar el esquema manualmente antes de arrancar la API:
 
 ```bash
-# 1. Login as superadmin
+dotnet tool install --global dotnet-ef          # omitir si ya está instalado
+dotnet ef database update --project src/FymUsers.Infrastructure \
+                           --startup-project src/FymUsers.Api
+```
+
+### 2. Servicio de la API
+
+Compilar el binario de release:
+
+```bash
+dotnet publish src/FymUsers.Api -c Release -o ./publish
+```
+
+Definir las variables de entorno para mantener los secretos fuera de `appsettings.json`:
+
+```bash
+export ConnectionStrings__Default="Server=<host>,1433;Database=FymUsers;User Id=sa;Password=<contraseña>;Encrypt=True;TrustServerCertificate=True;"
+export Jwt__SigningKey="<clave-secreta-minimo-32-caracteres>"
+export Jwt__Issuer="FymUsers.Api"
+export Jwt__Audience="FymUsers.Client"
+```
+
+Ejecutar la API publicada:
+
+```bash
+dotnet ./publish/FymUsers.Api.dll --urls http://0.0.0.0:5080
+```
+
+La API aplicará las migraciones pendientes y creará el super administrador en el primer arranque, luego comenzará a escuchar en el puerto `5080`. Swagger disponible en `/swagger`.
+
+## Esquema de base de datos
+
+El esquema se aplica automáticamente mediante EF Core Migrations. A continuación se incluyen los scripts equivalentes en T-SQL para referencia:
+
+```sql
+-- Crear la base de datos
+CREATE DATABASE FymUsers;
+GO
+
+USE FymUsers;
+GO
+
+-- Tabla: Roles
+CREATE TABLE Roles (
+    Id          INT IDENTITY(1,1) NOT NULL,
+    Name        NVARCHAR(64)  NOT NULL,
+    Description NVARCHAR(256) NULL,
+    CONSTRAINT PK_Roles PRIMARY KEY (Id)
+);
+CREATE UNIQUE INDEX IX_Roles_Name ON Roles (Name);
+
+-- Tabla: Users
+CREATE TABLE Users (
+    Id           INT IDENTITY(1,1) NOT NULL,
+    UserName     NVARCHAR(64)  NOT NULL,
+    Email        NVARCHAR(256) NOT NULL,
+    PasswordHash NVARCHAR(256) NOT NULL,
+    IsActive     BIT           NOT NULL,
+    CreatedAt    DATETIME2     NOT NULL,
+    CONSTRAINT PK_Users PRIMARY KEY (Id)
+);
+CREATE UNIQUE INDEX IX_Users_UserName ON Users (UserName);
+CREATE UNIQUE INDEX IX_Users_Email    ON Users (Email);
+
+-- Tabla: UserRoles
+CREATE TABLE UserRoles (
+    UserId     INT       NOT NULL,
+    RoleId     INT       NOT NULL,
+    AssignedAt DATETIME2 NOT NULL,
+    CONSTRAINT PK_UserRoles      PRIMARY KEY (UserId, RoleId),
+    CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE,
+    CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles (Id) ON DELETE NO ACTION
+);
+CREATE INDEX IX_UserRoles_RoleId ON UserRoles (RoleId);
+
+-- Datos iniciales de roles
+INSERT INTO Roles (Id, Name, Description) VALUES
+    (1, 'SuperAdmin', 'Acceso completo al sistema; puede crear usuarios.'),
+    (2, 'Admin',      'Administra usuarios y roles.'),
+    (3, 'User',       'Usuario autenticado estándar.');
+```
+
+## Endpoints de la API
+
+Todos los endpoints están documentados y son ejecutables desde Swagger (`/swagger`). El JWT se puede suministrar mediante el botón **Authorize**.
+
+| Método | Ruta                           | Autenticación       | Descripción                                          |
+|--------|--------------------------------|---------------------|------------------------------------------------------|
+| POST   | `/api/auth/login`              | Anónimo             | Devuelve JWT + perfil de usuario                     |
+| GET    | `/api/users`                   | Cualquier usuario   | Lista todos los usuarios con sus roles               |
+| GET    | `/api/users/me`                | Cualquier usuario   | Perfil del usuario autenticado                       |
+| GET    | `/api/users/{id}`              | Cualquier usuario   | Obtiene un usuario por id                            |
+| POST   | `/api/users`                   | Solo `SuperAdmin`   | Crea un nuevo usuario (opcionalmente con roles)      |
+| POST   | `/api/users/{id}/roles`        | Solo `SuperAdmin`   | Asigna uno o más roles a un usuario                  |
+| GET    | `/api/roles`                   | Cualquier usuario   | Lista todos los roles                                |
+
+### Ejemplos de peticiones
+
+```bash
+# 1. Login como superadmin
 TOKEN=$(curl -s -X POST http://localhost:5080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"userName":"superadmin","password":"SuperAdmin123!"}' \
   | jq -r .accessToken)
 
-# 2. List roles
+# 2. Listar roles
 curl -s http://localhost:5080/api/roles -H "Authorization: Bearer $TOKEN" | jq
 
-# 3. Create a new user with the "User" role
+# 3. Crear un nuevo usuario con el rol "User"
 curl -s -X POST http://localhost:5080/api/users \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -156,31 +236,30 @@ curl -s -X POST http://localhost:5080/api/users \
   }' | jq
 ```
 
-## Security notes
+## Notas de seguridad
 
-- Passwords are stored as **BCrypt** hashes (work factor 11). They are never returned by the API.
-- JWT is signed with **HMAC-SHA256**. Issuer, audience, lifetime, and signing key are all validated.
-- `POST /api/users` and `POST /api/users/{id}/roles` are gated by `[Authorize(Roles = "SuperAdmin")]`.
-- Connection string sets `Encrypt=True;TrustServerCertificate=True` per the requirement that the DB connection be encrypted. In a real environment `TrustServerCertificate=False` plus a CA-issued cert should be used.
-- Global `ExceptionHandlingMiddleware` converts both expected (`DomainException`) and unexpected exceptions into RFC 7807 `application/problem+json` responses with stable HTTP status codes (400/401/404/409/500).
-- CORS is restricted to `http://localhost:5173` (the Vite dev origin).
+- Las contraseñas se almacenan como hashes **BCrypt** (factor de trabajo 11). Nunca son devueltas por la API.
+- El JWT está firmado con **HMAC-SHA256**. Se validan el emisor, audiencia, tiempo de vida y clave de firma.
+- `POST /api/users` y `POST /api/users/{id}/roles` están protegidos por `[Authorize(Roles = "SuperAdmin")]`.
+- La cadena de conexión usa `Encrypt=True;TrustServerCertificate=True`. En un entorno real se debería usar `TrustServerCertificate=False` con un certificado emitido por una CA.
+- El `ExceptionHandlingMiddleware` global convierte tanto las excepciones esperadas (`DomainException`) como las inesperadas en respuestas `application/problem+json` RFC 7807 con códigos HTTP estables (400/401/404/409/500).
+- CORS está restringido a `http://localhost:5173` (el origen de Vite en desarrollo).
 
-## Production hardening (not implemented for the test, listed for completeness)
+## Consideraciones para producción (no implementadas en la prueba)
 
-- Move `Jwt:SigningKey`, `MSSQL_SA_PASSWORD`, and the seed-admin password to a secret store (`dotnet user-secrets`, environment variables, Azure Key Vault…).
-- Use a real CA-issued TLS certificate on SQL Server so `TrustServerCertificate=False` is safe.
-- Add refresh tokens / token revocation.
-- Add request validation via FluentValidation (currently using `DataAnnotations`).
-- Add rate limiting on `/api/auth/login`.
-- Containerise the API and use compose to bring up API + DB together.
+- Mover `Jwt:SigningKey`, la contraseña de SQL Server y la contraseña del super administrador a un gestor de secretos (`dotnet user-secrets`, variables de entorno, Azure Key Vault…).
+- Usar un certificado TLS emitido por una CA real en SQL Server para que `TrustServerCertificate=False` sea seguro.
+- Añadir refresh tokens y revocación de tokens.
+- Añadir validación de peticiones con FluentValidation (actualmente usando `DataAnnotations`).
+- Añadir rate limiting en `/api/auth/login`.
+- Contenerizar la API y usar Docker Compose para levantar API + BD juntos.
 
-## Resetting the database
+## Reiniciar la base de datos
 
-```bash
-docker exec fym-mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -C -Q "DROP DATABASE FymUsers;"
-# OR just nuke the container
-docker rm -f fym-mssql && <re-run the docker run command above>
+Ejecutar el siguiente comando en SQL Server para eliminar la base de datos:
+
+```sql
+DROP DATABASE FymUsers;
 ```
 
-The next `dotnet run` will recreate the schema and seed data.
-# fym-test-fullstack
+El próximo `dotnet run` recreará el esquema y los datos iniciales.

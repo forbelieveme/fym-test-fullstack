@@ -202,15 +202,17 @@ INSERT INTO Roles (Id, Name, Description) VALUES
 
 Todos los endpoints están documentados y son ejecutables desde Swagger (`/swagger`). El JWT se puede suministrar mediante el botón **Authorize**.
 
-| Método | Ruta                           | Autenticación       | Descripción                                          |
-|--------|--------------------------------|---------------------|------------------------------------------------------|
-| POST   | `/api/auth/login`              | Anónimo             | Devuelve JWT + perfil de usuario                     |
-| GET    | `/api/users`                   | Cualquier usuario   | Lista todos los usuarios con sus roles               |
-| GET    | `/api/users/me`                | Cualquier usuario   | Perfil del usuario autenticado                       |
-| GET    | `/api/users/{id}`              | Cualquier usuario   | Obtiene un usuario por id                            |
-| POST   | `/api/users`                   | Solo `SuperAdmin`   | Crea un nuevo usuario (opcionalmente con roles)      |
-| POST   | `/api/users/{id}/roles`        | Solo `SuperAdmin`   | Asigna uno o más roles a un usuario                  |
-| GET    | `/api/roles`                   | Cualquier usuario   | Lista todos los roles                                |
+| Método | Ruta                                    | Autenticación       | Descripción                                               |
+|--------|-----------------------------------------|---------------------|-----------------------------------------------------------|
+| POST   | `/api/auth/login`                       | Anónimo             | Devuelve JWT + perfil de usuario                          |
+| POST   | `/api/auth/register`                    | Anónimo             | Registra una nueva cuenta con el rol `User`; devuelve JWT |
+| GET    | `/api/users`                            | Cualquier usuario   | Lista todos los usuarios con sus roles                    |
+| GET    | `/api/users/me`                         | Cualquier usuario   | Perfil del usuario autenticado                            |
+| GET    | `/api/users/{id}`                       | Cualquier usuario   | Obtiene un usuario por id                                 |
+| POST   | `/api/users`                            | Solo `SuperAdmin`   | Crea un nuevo usuario (opcionalmente con roles)           |
+| POST   | `/api/users/{id}/roles`                 | Solo `SuperAdmin`   | Asigna uno o más roles a un usuario                       |
+| DELETE | `/api/users/{id}/roles/{roleId}`        | Solo `SuperAdmin`   | Elimina un rol específico de un usuario                   |
+| GET    | `/api/roles`                            | Cualquier usuario   | Lista todos los roles                                     |
 
 ### Ejemplos de peticiones
 
@@ -221,26 +223,46 @@ TOKEN=$(curl -s -X POST http://localhost:5080/api/auth/login \
   -d '{"userName":"superadmin","password":"SuperAdmin123!"}' \
   | jq -r .accessToken)
 
-# 2. Listar roles
-curl -s http://localhost:5080/api/roles -H "Authorization: Bearer $TOKEN" | jq
-
-# 3. Crear un nuevo usuario con el rol "User"
-curl -s -X POST http://localhost:5080/api/users \
-  -H "Authorization: Bearer $TOKEN" \
+# 2. Registrar una cuenta nueva (anónimo — siempre asigna el rol "User")
+curl -s -X POST http://localhost:5080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "userName":"alice",
     "email":"alice@example.com",
-    "password":"Alice123!@#",
+    "password":"Alice123!@#"
+  }' | jq
+
+# 3. Listar roles
+curl -s http://localhost:5080/api/roles -H "Authorization: Bearer $TOKEN" | jq
+
+# 4. Crear un nuevo usuario con el rol "User" (SuperAdmin)
+curl -s -X POST http://localhost:5080/api/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userName":"bob",
+    "email":"bob@example.com",
+    "password":"Bob123!@#",
     "roleIds":[3]
   }' | jq
+
+# 5. Asignar el rol "Admin" (id=2) al usuario con id=2
+curl -s -X POST http://localhost:5080/api/users/2/roles \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"roleIds":[2]}' | jq
+
+# 6. Eliminar el rol "Admin" (id=2) del usuario con id=2
+curl -s -X DELETE http://localhost:5080/api/users/2/roles/2 \
+  -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 ## Notas de seguridad
 
 - Las contraseñas se almacenan como hashes **BCrypt** (factor de trabajo 11). Nunca son devueltas por la API.
 - El JWT está firmado con **HMAC-SHA256**. Se validan el emisor, audiencia, tiempo de vida y clave de firma.
-- `POST /api/users` y `POST /api/users/{id}/roles` están protegidos por `[Authorize(Roles = "SuperAdmin")]`.
+- `POST /api/auth/register` es público pero siempre asigna el rol `User` (id=3); no es posible auto-registrarse con un rol elevado.
+- `POST /api/users`, `POST /api/users/{id}/roles` y `DELETE /api/users/{id}/roles/{roleId}` están protegidos por `[Authorize(Roles = "SuperAdmin")]`.
 - La cadena de conexión usa `Encrypt=True;TrustServerCertificate=True`. En un entorno real se debería usar `TrustServerCertificate=False` con un certificado emitido por una CA.
 - El `ExceptionHandlingMiddleware` global convierte tanto las excepciones esperadas (`DomainException`) como las inesperadas en respuestas `application/problem+json` RFC 7807 con códigos HTTP estables (400/401/404/409/500).
 - CORS está restringido a `http://localhost:5173` (el origen de Vite en desarrollo).

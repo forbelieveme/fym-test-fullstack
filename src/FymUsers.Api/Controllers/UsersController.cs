@@ -90,6 +90,28 @@ public class UsersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = savedUser.Id }, Map(savedUser));
     }
 
+    /// <summary>Remove a single role from a user. SuperAdmin only.</summary>
+    [HttpDelete("{id:int}/roles/{roleId:int}")]
+    [Authorize(Roles = RoleNames.SuperAdmin)]
+    public async Task<ActionResult<UserProfile>> RemoveRole(int id, int roleId, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken)
+            ?? throw DomainException.NotFound("User");
+
+        var entry = user.UserRoles.FirstOrDefault(userRole => userRole.RoleId == roleId)
+            ?? throw DomainException.NotFound("Role assignment");
+
+        _db.UserRoles.Remove(entry);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var refreshed = await _db.Users
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstAsync(user => user.Id == id, cancellationToken);
+        return Ok(Map(refreshed));
+    }
+
     /// <summary>Assign one or more roles to a user. SuperAdmin only.</summary>
     [HttpPost("{id:int}/roles")]
     [Authorize(Roles = RoleNames.SuperAdmin)]

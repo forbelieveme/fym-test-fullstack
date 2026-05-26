@@ -75,6 +75,16 @@ export default function Users() {
     }
   }
 
+  async function removeRole(userId: string, roleId: string) {
+    setErr(null);
+    try {
+      await usersApi.removeRole(userId, roleId);
+      await refresh();
+    } catch (e) {
+      setErr(extractError(e));
+    }
+  }
+
   return (
     <div>
       <h2>Users</h2>
@@ -89,7 +99,6 @@ export default function Users() {
               <th>Email</th>
               <th>Roles</th>
               <th>Created</th>
-              {canCreate && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -97,32 +106,42 @@ export default function Users() {
               <tr key={u.id}>
                 <td>{u.userName}</td>
                 <td>{u.email}</td>
-                <td>{u.roles.map((r) => r.name).join(", ") || "—"}</td>
-                <td>{new Date(u.createdAt).toLocaleString()}</td>
-                {canCreate && (
-                  <td>
-                    {assignFor === u.id ? (
-                      <span>
-                        <select value={assignRoleId} onChange={(e) => setAssignRoleId(e.target.value)}>
-                          <option value="">— role —</option>
-                          {roles
-                            .filter((r) => !u.roles.some((ur) => ur.id === r.id))
-                            .map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.name}
-                              </option>
-                            ))}
-                        </select>
-                        <button onClick={() => assignRole(u.id)} disabled={!assignRoleId}>
-                          Save
+                <td>
+                  {u.roles.length === 0 && !canCreate && "—"}
+                  {u.roles.map((r) => (
+                    <span key={r.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem", marginRight: "0.35rem" }}>
+                      {r.name}
+                      {canCreate && (
+                        <button
+                          onClick={() => removeRole(u.id, r.id)}
+                          title={`Remove ${r.name}`}
+                          style={{ padding: "0 0.25rem", lineHeight: 1 }}
+                        >
+                          ×
                         </button>
-                        <button onClick={() => setAssignFor(null)}>Cancel</button>
-                      </span>
-                    ) : (
-                      <button onClick={() => setAssignFor(u.id)}>+ role</button>
-                    )}
-                  </td>
-                )}
+                      )}
+                    </span>
+                  ))}
+                  {canCreate && assignFor === u.id ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      <select value={assignRoleId} onChange={(e) => setAssignRoleId(e.target.value)}>
+                        <option value="">— pick —</option>
+                        {roles
+                          .filter((r) => !u.roles.some((ur) => ur.id === r.id))
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                      </select>
+                      <button onClick={() => assignRole(u.id)} disabled={!assignRoleId}>Add</button>
+                      <button onClick={() => { setAssignFor(null); setAssignRoleId(""); }}>Cancel</button>
+                    </span>
+                  ) : (
+                    canCreate && roles.some((r) => !u.roles.some((ur) => ur.id === r.id)) && (
+                      <button onClick={() => { setAssignFor(u.id); setAssignRoleId(""); }}>+ role</button>
+                    )
+                  )}
+                </td>
+                <td>{new Date(u.createdAt).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

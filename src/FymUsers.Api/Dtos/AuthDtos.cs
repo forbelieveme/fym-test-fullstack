@@ -30,5 +30,10 @@ public record RoleProfile(
     string Name,
     string? Description);
 
+public record RegisterRequest(
+    [Required, MinLength(3), MaxLength(64)] string UserName,
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [Required, MinLength(8), MaxLength(128)] string Password);
+
 public record AssignRolesRequest(
     [Required] List<int> RoleIds);

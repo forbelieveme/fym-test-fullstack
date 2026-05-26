@@ -67,6 +67,8 @@ export interface LoginResponse {
 export const authApi = {
   login: (userName: string, password: string) =>
     api.post<LoginResponse>("/api/auth/login", { userName, password }).then((r) => r.data),
+  register: (userName: string, email: string, password: string) =>
+    api.post<LoginResponse>("/api/auth/register", { userName, email, password }).then((r) => r.data),
 };
 
 export const usersApi = {
@@ -76,6 +78,8 @@ export const usersApi = {
     api.post<AppUser>("/api/users", body).then((r) => r.data),
   assignRoles: (userId: string, roleIds: string[]) =>
     api.post<AppUser>(`/api/users/${userId}/roles`, { roleIds }).then((r) => r.data),
+  removeRole: (userId: string, roleId: string) =>
+    api.delete<AppUser>(`/api/users/${userId}/roles/${roleId}`).then((r) => r.data),
 };
 
 export const rolesApi = {
@@ -84,6 +88,10 @@ export const rolesApi = {
 
 export function isSuperAdmin(user: AppUser | null): boolean {
   return !!user?.roles.some((r) => r.name === "SuperAdmin");
+}
+
+export function isAdminOrAbove(user: AppUser | null): boolean {
+  return !!user?.roles.some((r) => r.name === "Admin" || r.name === "SuperAdmin");
 }
 
 export function extractError(err: unknown): string {

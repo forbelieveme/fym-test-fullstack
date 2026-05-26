@@ -2,20 +2,40 @@ import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Users from "./pages/Users";
 import Roles from "./pages/Roles";
+import Me from "./pages/Me";
 import { AuthProvider, RequireAuth, useAuth } from "./auth";
+import { isAdminOrAbove } from "./api";
 import "./App.css";
+
+function RequireAdminOrAbove({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!isAdminOrAbove(user)) return <Navigate to="/me" replace />;
+  return <>{children}</>;
+}
+
+function DefaultRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={isAdminOrAbove(user) ? "/users" : "/me"} replace />;
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const admin = isAdminOrAbove(user);
   return (
     <div className="app">
       <header>
         <strong>FymUsers</strong>
         {user && (
           <nav>
-            <Link to="/users">Users</Link>
-            <Link to="/roles">Roles</Link>
+            {admin ? (
+              <>
+                <Link to="/users">Users</Link>
+                <Link to="/roles">Roles</Link>
+              </>
+            ) : (
+              <Link to="/me">Me</Link>
+            )}
           </nav>
         )}
         <span className="spacer" />
@@ -47,10 +67,20 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
+            path="/me"
+            element={
+              <RequireAuth>
+                <Me />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/users"
             element={
               <RequireAuth>
-                <Users />
+                <RequireAdminOrAbove>
+                  <Users />
+                </RequireAdminOrAbove>
               </RequireAuth>
             }
           />
@@ -58,11 +88,20 @@ export default function App() {
             path="/roles"
             element={
               <RequireAuth>
-                <Roles />
+                <RequireAdminOrAbove>
+                  <Roles />
+                </RequireAdminOrAbove>
               </RequireAuth>
             }
           />
-          <Route path="*" element={<Navigate to="/users" replace />} />
+          <Route
+            path="*"
+            element={
+              <RequireAuth>
+                <DefaultRedirect />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </Layout>
     </AuthProvider>

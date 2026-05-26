@@ -12,6 +12,42 @@ Services must start in this order: **DB → API → Client**
 
 ---
 
+## Re-run (services already started once before)
+
+Use this path on subsequent runs. It handles already-running processes cleanly.
+
+```bash
+# 1. DB — start existing container (no-op if already running)
+docker start fym-mssql
+
+# 2. API — kill any process on 5080, then restart
+kill $(lsof -ti:5080) 2>/dev/null; sleep 1
+export PATH="/opt/homebrew/opt/dotnet@8/bin:$HOME/.dotnet/tools:$PATH"
+export DOTNET_ROOT="/opt/homebrew/opt/dotnet@8/libexec"
+dotnet run --project /Users/mbp/Documents/TEST/src/FymUsers.Api \
+  --urls http://localhost:5080 > /tmp/fym-api.log 2>&1 &
+
+# 3. Client — kill any process on 5173, then restart
+kill $(lsof -ti:5173) 2>/dev/null; sleep 1
+cd /Users/mbp/Documents/TEST/client && npm run dev > /tmp/fym-client.log 2>&1 &
+```
+
+Check logs: `tail -f /tmp/fym-api.log` or `tail -f /tmp/fym-client.log`
+
+---
+
+## Stop all services
+
+```bash
+kill $(lsof -ti:5080) 2>/dev/null   # API
+kill $(lsof -ti:5173) 2>/dev/null   # React client
+docker stop fym-mssql               # DB (keeps data)
+```
+
+---
+
+## First run (cold start)
+
 ### 1. Start the database
 
 **Apple Silicon (Mac M-chip):**
@@ -35,8 +71,6 @@ docker run -d --name fym-mssql \
 
 Wait ~10 seconds for the engine to initialize before starting the API.
 
----
-
 ### 2. Start the API
 
 ```bash
@@ -53,8 +87,6 @@ On first boot the API will:
 3. Create the `superadmin` user.
 
 **Swagger UI:** http://localhost:5080/swagger
-
----
 
 ### 3. Start the React client
 
@@ -108,8 +140,8 @@ curl -s http://localhost:5080/api/users \
 
 ```bash
 docker rm -f fym-mssql
-# Then re-run the docker run command above
-# The next API startup recreates everything automatically
+# Then re-run the docker run command above.
+# The next API startup recreates everything automatically.
 ```
 
 ---

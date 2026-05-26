@@ -1,0 +1,101 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--code-bg);
+}
+header nav {
+  display: flex;
+  gap: 1rem;
+}
+header nav a {
+  color: var(--text-h);
+  text-decoration: none;
+}
+header nav a:hover { color: var(--accent); }
+header .spacer { flex: 1; }
+header .me { margin-right: 0.75rem; color: var(--text); }
+
+main {
+  padding: 1.5rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.card {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  max-width: 480px;
+}
+.card form { display: flex; flex-direction: column; gap: 0.75rem; }
+.card label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
+.card input[type="text"],
+.card input[type="email"],
+.card input[type="password"],
+.card input:not([type]) {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+.card fieldset {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+.card fieldset legend { font-size: 0.85rem; padding: 0 0.25rem; }
+label.inline { flex-direction: row; align-items: center; gap: 0.5rem; }
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+}
+button:hover { background: var(--accent); color: white; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+th, td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+th { color: var(--text-h); font-weight: 500; }
+
+.error {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.08);
+  border: 1px solid rgba(198, 40, 40, 0.3);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+}
+.hint { font-size: 0.85rem; color: var(--text); margin-top: 0.75rem; }
+
+h1 { font-size: 1.6rem !important; margin: 0 0 1rem !important; }
+h2 { font-size: 1.3rem; margin: 0 0 0.75rem; }
+h3 { font-size: 1.05rem; margin: 0 0 0.5rem; color: var(--text-h); }

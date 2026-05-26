@@ -105,7 +105,7 @@ npm install
 npm run dev
 ```
 
-Abrir <http://localhost:5173>. El formulario de login viene pre-relleno con las credenciales del seed.
+Abrir <http://localhost:5173>. Iniciar sesión con las credenciales del super administrador indicadas arriba.
 
 ## Despliegue
 

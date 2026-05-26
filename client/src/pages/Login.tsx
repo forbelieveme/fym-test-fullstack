@@ -10,9 +10,9 @@ export default function Login() {
   const nav = useNavigate();
 
   const [mode, setMode] = useState<Mode>("login");
-  const [userName, setUserName] = useState("superadmin");
+  const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("SuperAdmin123!");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -20,8 +20,8 @@ export default function Login() {
     setMode(next);
     setErr(null);
     if (next === "login") {
-      setUserName("superadmin");
-      setPassword("SuperAdmin123!");
+      setUserName("");
+      setPassword("");
       setEmail("");
     } else {
       setUserName("");

@@ -16,7 +16,7 @@ namespace FymUsers.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public UsersController(AppDbContext db) => _db = db;
+    public UsersController(AppDbContext dbContext) => _db = dbContext;
 
     /// <summary>List all users with their roles. Requires authentication.</summary>
     [HttpGet]

@@ -12,13 +12,13 @@ namespace FymUsers.Api.Controllers;
 public class RolesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public RolesController(AppDbContext db) => _db = db;
+    public RolesController(AppDbContext dbContext) => _db = dbContext;
 
     /// <summary>List all roles.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<RoleProfile>>> List(CancellationToken ct)
+    public async Task<ActionResult<List<RoleProfile>>> List(CancellationToken cancellationToken)
     {
-        var roles = await _db.Roles.OrderBy(r => r.Name).ToListAsync(ct);
-        return Ok(roles.Select(r => new RoleProfile(r.Id, r.Name, r.Description)).ToList());
+        var roles = await _db.Roles.OrderBy(role => role.Name).ToListAsync(cancellationToken);
+        return Ok(roles.Select(role => new RoleProfile(role.Id, role.Name, role.Description)).ToList());
     }
 }

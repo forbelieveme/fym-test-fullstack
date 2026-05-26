@@ -14,32 +14,32 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IJwtTokenService _jwt;
 
-    public AuthController(AppDbContext db, IJwtTokenService jwt)
+    public AuthController(AppDbContext dbContext, IJwtTokenService jwtTokenService)
     {
-        _db = db;
-        _jwt = jwt;
+        _db = dbContext;
+        _jwt = jwtTokenService;
     }
 
     /// <summary>Log in with username + password and receive a JWT.</summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponse), 200)]
     [ProducesResponseType(401)]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest req, CancellationToken ct)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var user = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.UserName == req.UserName, ct);
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.UserName == request.UserName, cancellationToken);
 
-        if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+        if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             throw DomainException.Unauthorized();
 
-        var roleNames = user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var (token, exp) = _jwt.CreateToken(user, roleNames);
+        var roleNames = user.UserRoles.Select(userRole => userRole.Role.Name).ToList();
+        var (token, expiresAtUtc) = _jwt.CreateToken(user, roleNames);
 
-        var dto = new UserProfile(
+        var userProfile = new UserProfile(
             user.Id, user.UserName, user.Email, user.IsActive, user.CreatedAt,
-            user.UserRoles.Select(ur => new RoleProfile(ur.Role.Id, ur.Role.Name, ur.Role.Description)).ToList());
+            [.. user.UserRoles.Select(userRole => new RoleProfile(userRole.Role.Id, userRole.Role.Name, userRole.Role.Description))]);
 
-        return Ok(new LoginResponse(token, exp, dto));
+        return Ok(new LoginResponse(token, expiresAtUtc, userProfile));
     }
 }

@@ -4,3 +4,7 @@ obj/
 
 # macOS
 .DS_Store
+
+# IDE / tooling
+.claude/
+.vscode/

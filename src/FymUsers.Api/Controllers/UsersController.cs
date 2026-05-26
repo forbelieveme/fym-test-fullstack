@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FymUsers.Api.Dtos;
 using FymUsers.Api.Middleware;
@@ -19,35 +20,35 @@ public class UsersController : ControllerBase
 
     /// <summary>List all users with their roles. Requires authentication.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<UserDto>>> List(CancellationToken ct)
+    public async Task<ActionResult<List<UserProfile>>> List(CancellationToken cancellationToken)
     {
         var users = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .OrderBy(u => u.UserName)
-            .ToListAsync(ct);
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .OrderBy(user => user.UserName)
+            .ToListAsync(cancellationToken);
         return Ok(users.Select(Map).ToList());
     }
 
     /// <summary>Get the currently authenticated user's profile.</summary>
     [HttpGet("me")]
-    public async Task<ActionResult<UserDto>> Me(CancellationToken ct)
+    public async Task<ActionResult<UserProfile>> Me(CancellationToken cancellationToken)
     {
-        var id = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-                         ?? User.FindFirstValue("sub")!);
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                                     ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
         var user = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Id == id, ct)
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Id == currentUserId, cancellationToken)
             ?? throw DomainException.NotFound("User");
         return Ok(Map(user));
     }
 
     /// <summary>Get a user by id.</summary>
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<UserDto>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<UserProfile>> GetById(int id, CancellationToken cancellationToken)
     {
         var user = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Id == id, ct)
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken)
             ?? throw DomainException.NotFound("User");
         return Ok(Map(user));
     }
@@ -55,69 +56,69 @@ public class UsersController : ControllerBase
     /// <summary>Create a new user. Restricted to SuperAdmin.</summary>
     [HttpPost]
     [Authorize(Roles = RoleNames.SuperAdmin)]
-    public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req, CancellationToken ct)
+    public async Task<ActionResult<UserProfile>> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
-        if (await _db.Users.AnyAsync(u => u.UserName == req.UserName, ct))
+        if (await _db.Users.AnyAsync(user => user.UserName == request.UserName, cancellationToken))
             throw DomainException.Conflict("UserName already in use.");
-        if (await _db.Users.AnyAsync(u => u.Email == req.Email, ct))
+        if (await _db.Users.AnyAsync(user => user.Email == request.Email, cancellationToken))
             throw DomainException.Conflict("Email already in use.");
 
-        var user = new User
+        var newUser = new User
         {
-            UserName = req.UserName,
-            Email = req.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password, workFactor: 11),
+            UserName = request.UserName,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 11),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
-        _db.Users.Add(user);
+        _db.Users.Add(newUser);
 
-        if (req.RoleIds is { Count: > 0 })
+        if (request.RoleIds is { Count: > 0 })
         {
-            var validRoleIds = await _db.Roles.Where(r => req.RoleIds!.Contains(r.Id)).Select(r => r.Id).ToListAsync(ct);
-            if (validRoleIds.Count != req.RoleIds.Distinct().Count())
+            var validRoleIds = await _db.Roles.Where(role => request.RoleIds.Contains(role.Id)).Select(role => role.Id).ToListAsync(cancellationToken);
+            if (validRoleIds.Count != request.RoleIds.Distinct().Count())
                 throw DomainException.BadRequest("One or more roles do not exist.");
-            foreach (var rid in validRoleIds)
-                user.UserRoles.Add(new UserRole { RoleId = rid, AssignedAt = DateTime.UtcNow });
+            foreach (var roleId in validRoleIds)
+                newUser.UserRoles.Add(new UserRole { RoleId = roleId, AssignedAt = DateTime.UtcNow });
         }
 
-        await _db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(cancellationToken);
 
-        var saved = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstAsync(u => u.Id == user.Id, ct);
-        return CreatedAtAction(nameof(GetById), new { id = saved.Id }, Map(saved));
+        var savedUser = await _db.Users
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstAsync(user => user.Id == newUser.Id, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = savedUser.Id }, Map(savedUser));
     }
 
     /// <summary>Assign one or more roles to a user. SuperAdmin only.</summary>
     [HttpPost("{id:int}/roles")]
     [Authorize(Roles = RoleNames.SuperAdmin)]
-    public async Task<ActionResult<UserDto>> AssignRoles(int id, [FromBody] AssignRolesRequest req, CancellationToken ct)
+    public async Task<ActionResult<UserProfile>> AssignRoles(int id, [FromBody] AssignRolesRequest request, CancellationToken cancellationToken)
     {
         var user = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Id == id, ct)
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken)
             ?? throw DomainException.NotFound("User");
 
-        var requested = req.RoleIds.Distinct().ToList();
-        var validRoleIds = await _db.Roles.Where(r => requested.Contains(r.Id)).Select(r => r.Id).ToListAsync(ct);
-        if (validRoleIds.Count != requested.Count)
+        var requestedRoleIds = request.RoleIds.Distinct().ToList();
+        var validRoleIds = await _db.Roles.Where(role => requestedRoleIds.Contains(role.Id)).Select(role => role.Id).ToListAsync(cancellationToken);
+        if (validRoleIds.Count != requestedRoleIds.Count)
             throw DomainException.BadRequest("One or more roles do not exist.");
 
-        foreach (var rid in validRoleIds)
+        foreach (var roleId in validRoleIds)
         {
-            if (!user.UserRoles.Any(ur => ur.RoleId == rid))
-                _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = rid, AssignedAt = DateTime.UtcNow });
+            if (!user.UserRoles.Any(userRole => userRole.RoleId == roleId))
+                _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId, AssignedAt = DateTime.UtcNow });
         }
-        await _db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(cancellationToken);
 
-        var refreshed = await _db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstAsync(u => u.Id == id, ct);
-        return Ok(Map(refreshed));
+        var refreshedUser = await _db.Users
+            .Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role)
+            .FirstAsync(user => user.Id == id, cancellationToken);
+        return Ok(Map(refreshedUser));
     }
 
-    private static UserDto Map(User u) => new(
-        u.Id, u.UserName, u.Email, u.IsActive, u.CreatedAt,
-        u.UserRoles.Select(ur => new RoleDto(ur.Role.Id, ur.Role.Name, ur.Role.Description)).ToList());
+    private static UserProfile Map(User user) => new(
+        user.Id, user.UserName, user.Email, user.IsActive, user.CreatedAt,
+        [.. user.UserRoles.Select(userRole => new RoleProfile(userRole.Role.Id, userRole.Role.Name, userRole.Role.Description))]);
 }

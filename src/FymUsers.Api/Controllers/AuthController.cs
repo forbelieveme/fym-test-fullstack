@@ -36,9 +36,9 @@ public class AuthController : ControllerBase
         var roleNames = user.UserRoles.Select(ur => ur.Role.Name).ToList();
         var (token, exp) = _jwt.CreateToken(user, roleNames);
 
-        var dto = new UserDto(
+        var dto = new UserProfile(
             user.Id, user.UserName, user.Email, user.IsActive, user.CreatedAt,
-            user.UserRoles.Select(ur => new RoleDto(ur.Role.Id, ur.Role.Name, ur.Role.Description)).ToList());
+            user.UserRoles.Select(ur => new RoleProfile(ur.Role.Id, ur.Role.Name, ur.Role.Description)).ToList());
 
         return Ok(new LoginResponse(token, exp, dto));
     }

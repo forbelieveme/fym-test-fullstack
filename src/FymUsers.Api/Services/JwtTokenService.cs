@@ -21,8 +21,8 @@ public interface IJwtTokenService
 
 public class JwtTokenService : IJwtTokenService
 {
-    private readonly JwtOptions _opt;
-    public JwtTokenService(JwtOptions opt) => _opt = opt;
+    private readonly JwtOptions _options;
+    public JwtTokenService(JwtOptions options) => _options = options;
 
     public (string token, DateTime expiresAtUtc) CreateToken(User user, IEnumerable<string> roleNames)
     {
@@ -33,20 +33,20 @@ public class JwtTokenService : IJwtTokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
-        claims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roleNames.Select(roleName => new Claim(ClaimTypes.Role, roleName)));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opt.SigningKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddMinutes(_opt.ExpiryMinutes);
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
+        var signingCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+        var expiresAtUtc = DateTime.UtcNow.AddMinutes(_options.ExpiryMinutes);
 
-        var jwt = new JwtSecurityToken(
-            issuer: _opt.Issuer,
-            audience: _opt.Audience,
+        var jwtToken = new JwtSecurityToken(
+            issuer: _options.Issuer,
+            audience: _options.Audience,
             claims: claims,
             notBefore: DateTime.UtcNow,
-            expires: expires,
-            signingCredentials: creds);
+            expires: expiresAtUtc,
+            signingCredentials: signingCredentials);
 
-        return (new JwtSecurityTokenHandler().WriteToken(jwt), expires);
+        return (new JwtSecurityTokenHandler().WriteToken(jwtToken), expiresAtUtc);
     }
 }

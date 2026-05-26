@@ -9,7 +9,7 @@ public record LoginRequest(
 public record LoginResponse(
     string AccessToken,
     DateTime ExpiresAtUtc,
-    UserDto User);
+    UserProfile User);
 
 public record CreateUserRequest(
     [Required, MinLength(3), MaxLength(64)] string UserName,
@@ -17,15 +17,15 @@ public record CreateUserRequest(
     [Required, MinLength(8), MaxLength(128)] string Password,
     List<int>? RoleIds);
 
-public record UserDto(
+public record UserProfile(
     int Id,
     string UserName,
     string Email,
     bool IsActive,
     DateTime CreatedAt,
-    List<RoleDto> Roles);
+    List<RoleProfile> Roles);
 
-public record RoleDto(
+public record RoleProfile(
     int Id,
     string Name,
     string? Description);
